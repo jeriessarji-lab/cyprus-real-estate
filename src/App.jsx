@@ -169,7 +169,7 @@ export default function App() {
       {view === "listings" && (
         <div style={{ background: `linear-gradient(180deg, ${DARK2} 0%, ${DARK} 100%)`, padding: "48px 24px 32px", textAlign: "center" }}>
           <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 36, color: GOLD, marginBottom: 10, letterSpacing: 1 }}>
-            {isAr ? "اكتشف أفضل العقارات في قبرص" : "Discover Luxury Properties in Cyprus"}
+            {isAr ? "اكتشف العقارات السرية في قبرص" : "Discover SECRET HIDDEN Properties in Cyprus"}
           </div>
           <div style={{ color: "#888", fontSize: 15, maxWidth: 500, margin: "0 auto" }}>
             {isAr ? "عقارات حصرية مباشرة من كبار المطورين" : "Exclusive developments from top Cyprus developers"}
