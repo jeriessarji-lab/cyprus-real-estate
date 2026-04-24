@@ -34,16 +34,17 @@
     @keyframes spin{to{transform:rotate(360deg)}}
     .toast{position:fixed;bottom:24px;right:24px;background:#C9A84C;color:#000;padding:12px 20px;border-radius:8px;font-weight:500;z-index:999;animation:fadeIn 0.3s}
     @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    .admin-bar{background:#C9A84C18;border-bottom:1px solid #C9A84C33;padding:6px 24px;text-align:center;font-size:12px;color:#C9A84C}
   </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const {useState, useEffect} = React;
+const {useState,useEffect} = React;
 const GOLD="#C9A84C", GOLD2="#E8C97A", DARK="#0A0A0A", DARK2="#141414", DARK3="#1C1C1C", BORDER="#2A2A2A";
 const statusColor={"New Launch":GOLD,"Off-Plan":"#4A9EFF","Ready":"#4CAF50"};
+const ADMIN_PASSWORD = "Sarji@Admin";
 
-// Supabase client
 const supabase = window.supabase.createClient(
   "https://vqcnrkdkkhskxgrrjzhw.supabase.co",
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxY25ya2Rra2hza3hncnJqemh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NzkyNDEsImV4cCI6MjA5MjU1NTI0MX0.H5DAFXEGPqMx1WHSnB0rs40dVMjJAUZ_DGSmqjcXrxE"
@@ -72,6 +73,34 @@ function Gallery({imgs,height}){
   );
 }
 
+function LoginModal({onLogin,onClose}){
+  const [pw,setPw]=useState("");
+  const [err,setErr]=useState(false);
+  const try_=()=>{
+    if(pw===ADMIN_PASSWORD){onLogin();onClose();}
+    else{setErr(true);setTimeout(()=>setErr(false),2000);}
+  };
+  return(
+    <div className="modal-bg" onClick={onClose}>
+      <div className="modal" style={{maxWidth:360}} onClick={e=>e.stopPropagation()}>
+        <div style={{textAlign:"center",marginBottom:24}}>
+          <div style={{fontSize:36,marginBottom:12}}>🔐</div>
+          <div style={{fontFamily:"Georgia,serif",fontSize:20,color:GOLD}}>Admin Access</div>
+          <div style={{fontSize:13,color:"#666",marginTop:6}}>Enter password to manage listings</div>
+        </div>
+        <label>Password</label>
+        <input type="password" value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==="Enter"&&try_()} placeholder="Enter admin password" autoFocus
+          style={{borderColor:err?"#ff5555":BORDER}}/>
+        {err&&<div style={{fontSize:12,color:"#ff5555",marginTop:6}}>❌ Incorrect password</div>}
+        <div style={{display:"flex",gap:10,marginTop:20}}>
+          <button className="btn-ghost" style={{flex:1}} onClick={onClose}>Cancel</button>
+          <button className="btn-gold" style={{flex:1}} onClick={try_}>Login</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App(){
   const [lang,setLang]=useState("en");
   const [view,setView]=useState("listings");
@@ -79,6 +108,8 @@ function App(){
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
   const [toast,setToast]=useState(null);
+  const [isAdmin,setIsAdmin]=useState(false);
+  const [showLogin,setShowLogin]=useState(false);
   const [showForm,setShowForm]=useState(false);
   const [editId,setEditId]=useState(null);
   const [shareP,setShareP]=useState(null);
@@ -91,7 +122,6 @@ function App(){
 
   const showToast=msg=>{setToast(msg);setTimeout(()=>setToast(null),3000)};
 
-  // Load all properties from Supabase
   const loadProps=async()=>{
     setLoading(true);
     const {data,error}=await supabase.from("properties").select("*").order("created_at",{ascending:false});
@@ -101,14 +131,17 @@ function App(){
 
   useEffect(()=>{loadProps()},[]);
 
-  const totalViews=props.reduce((s,p)=>s+p.views,0);
+  const totalViews=props.reduce((s,p)=>s+(p.views||0),0);
   const topP=[...props].sort((a,b)=>b.views-a.views)[0];
 
-  const openAdd=()=>{setForm(emptyForm);setEditId(null);setShowForm(true)};
+  const openAdd=()=>{
+    if(!isAdmin){setShowLogin(true);return;}
+    setForm(emptyForm);setEditId(null);setShowForm(true);
+  };
   const openEdit=p=>{
+    if(!isAdmin){setShowLogin(true);return;}
     setForm({title:p.title||"",title_ar:p.title_ar||"",location:p.location||"",location_ar:p.location_ar||"",price:p.price||"",type:p.type||"Apartment",bedrooms:p.bedrooms||2,bathrooms:p.bathrooms||1,area:p.area||100,developer:p.developer||"",commission:p.commission||"7%",status:p.status||"New Launch",whatsapp:p.whatsapp||"",images:p.images||"",description:p.description||"",description_ar:p.description_ar||"",featured:p.featured||false});
-    setEditId(p.id);
-    setShowForm(true);
+    setEditId(p.id);setShowForm(true);
   };
 
   const save=async()=>{
@@ -120,14 +153,14 @@ function App(){
       const {error}=await supabase.from("properties").insert([{...form,views:0}]);
       if(!error){showToast("✅ Property added!");loadProps();}
     }
-    setSaving(false);
-    setShowForm(false);
+    setSaving(false);setShowForm(false);
   };
 
   const del=async(id)=>{
+    if(!isAdmin){setShowLogin(true);return;}
+    if(!confirm("Delete this property?")) return;
     await supabase.from("properties").delete().eq("id",id);
-    showToast("🗑 Property deleted");
-    loadProps();
+    showToast("🗑 Property deleted");loadProps();
   };
 
   const trackView=async(id)=>{
@@ -136,9 +169,15 @@ function App(){
     setProps(ps=>ps.map(x=>x.id===id?{...x,views:(x.views||0)+1}:x));
   };
 
+  const logout=()=>{setIsAdmin(false);showToast("👋 Logged out");if(view==="dashboard") setView("listings")};
+
   return(
     <div style={{minHeight:"100vh",background:DARK,direction:isAr?"rtl":"ltr"}}>
       {toast&&<div className="toast">{toast}</div>}
+      {showLogin&&<LoginModal onLogin={()=>{setIsAdmin(true);showToast("✅ Welcome Admin!");}} onClose={()=>setShowLogin(false)}/>}
+
+      {/* Admin bar */}
+      {isAdmin&&<div className="admin-bar">🔐 Admin Mode — You can add, edit and delete listings &nbsp;|&nbsp; <span style={{cursor:"pointer",textDecoration:"underline"}} onClick={logout}>Logout</span></div>}
 
       {/* Header */}
       <div style={{background:DARK2,borderBottom:`1px solid ${BORDER}`,padding:"0 24px"}}>
@@ -154,8 +193,11 @@ function App(){
             <button className="nav-link" style={{color:lang==="en"?GOLD:"#666"}} onClick={()=>setLang("en")}>EN</button>
             <button className="nav-link" style={{color:lang==="ar"?GOLD:"#666"}} onClick={()=>setLang("ar")}>AR</button>
             <button className="nav-link" style={{color:view==="listings"?GOLD:"#999",background:view==="listings"?"#C9A84C15":"transparent"}} onClick={()=>setView("listings")}>{isAr?"العقارات":"Listings"}</button>
-            <button className="nav-link" style={{color:view==="dashboard"?GOLD:"#999",background:view==="dashboard"?"#C9A84C15":"transparent"}} onClick={()=>setView("dashboard")}>{isAr?"لوحة التحكم":"Dashboard"}</button>
-            <button className="btn-gold" onClick={openAdd}>+ {isAr?"إضافة عقار":"Add Property"}</button>
+            {isAdmin&&<button className="nav-link" style={{color:view==="dashboard"?GOLD:"#999",background:view==="dashboard"?"#C9A84C15":"transparent"}} onClick={()=>setView("dashboard")}>{isAr?"لوحة التحكم":"Dashboard"}</button>}
+            {isAdmin
+              ? <button className="btn-gold" onClick={openAdd}>+ {isAr?"إضافة عقار":"Add Property"}</button>
+              : <button className="btn-ghost" onClick={()=>setShowLogin(true)}>🔐 {isAr?"دخول المشرف":"Admin"}</button>
+            }
           </div>
         </div>
       </div>
@@ -174,12 +216,10 @@ function App(){
       )}
 
       <div style={{maxWidth:1100,margin:"0 auto",padding:"24px 24px 60px"}}>
-
-        {/* Loading */}
         {loading&&<div className="loading"><div className="spinner"/>{isAr?"جاري التحميل...":"Loading properties..."}</div>}
 
-        {/* Dashboard */}
-        {!loading&&view==="dashboard"&&(
+        {/* Dashboard — Admin only */}
+        {!loading&&view==="dashboard"&&isAdmin&&(
           <div>
             <div style={{fontSize:22,color:GOLD,fontFamily:"Georgia,serif",marginBottom:24}}>{isAr?"لوحة التحكم":"Analytics Dashboard"}</div>
             <div className="grid2" style={{marginBottom:20}}>
@@ -198,9 +238,9 @@ function App(){
                   <div style={{fontSize:14,color:"#E8E0D0"}}>{isAr?p.title_ar:p.title}</div>
                   <div style={{fontSize:12,color:"#666",marginTop:2}}>{getImgs(p).length} {isAr?"صور":"photos"} · {isAr?p.location_ar:p.location}</div>
                 </div>
-                <div style={{textAlign:"right"}}><div style={{fontSize:20,color:GOLD,fontWeight:500}}>{p.views}</div><div style={{fontSize:11,color:"#555"}}>{isAr?"مشاهدة":"views"}</div></div>
+                <div style={{textAlign:"right"}}><div style={{fontSize:20,color:GOLD,fontWeight:500}}>{p.views||0}</div><div style={{fontSize:11,color:"#555"}}>{isAr?"مشاهدة":"views"}</div></div>
                 <div style={{width:100,height:8,background:"#222",borderRadius:4,overflow:"hidden"}}>
-                  <div style={{width:`${props.length>0?Math.min(100,(p.views/Math.max(...props.map(x=>x.views||0),1))*100):0}%`,height:"100%",background:`linear-gradient(90deg,${GOLD},${GOLD2})`,borderRadius:4}}/>
+                  <div style={{width:`${props.length>0?Math.min(100,((p.views||0)/Math.max(...props.map(x=>x.views||0),1))*100):0}%`,height:"100%",background:`linear-gradient(90deg,${GOLD},${GOLD2})`,borderRadius:4}}/>
                 </div>
                 <div style={{fontSize:13,color:"#4CAF50",fontWeight:500}}>{p.commission}</div>
                 <button className="btn-ghost" style={{fontSize:12}} onClick={()=>openEdit(p)}>✏️</button>
@@ -216,8 +256,7 @@ function App(){
             {props.length===0&&<div style={{textAlign:"center",padding:"60px 0",color:"#555"}}>
               <div style={{fontSize:40,marginBottom:16}}>🏛</div>
               <div style={{fontSize:18,color:GOLD,marginBottom:8}}>{isAr?"لا توجد عقارات بعد":"No properties yet"}</div>
-              <div style={{fontSize:14,marginBottom:24}}>{isAr?"أضف أول عقار الآن":"Add your first property now"}</div>
-              <button className="btn-gold" onClick={openAdd}>+ {isAr?"إضافة عقار":"Add Property"}</button>
+              {isAdmin&&<button className="btn-gold" onClick={openAdd} style={{marginTop:16}}>+ {isAr?"إضافة عقار":"Add Property"}</button>}
             </div>}
             <div className="grid3">
               {props.map(p=>{
@@ -251,10 +290,11 @@ function App(){
                           style={{flex:1,background:"#25D36622",color:"#25D366",border:"1px solid #25D36644",borderRadius:7,padding:"8px 0",textAlign:"center",fontSize:13,textDecoration:"none",display:"block"}}>💬 WhatsApp</a>
                         <button style={{flex:1,background:"#C9A84C15",color:GOLD,border:`1px solid ${GOLD}33`,borderRadius:7,padding:"8px 0",fontSize:13,cursor:"pointer"}} onClick={e=>{e.stopPropagation();setShareP(p)}}>📤 {isAr?"مشاركة":"Share"}</button>
                       </div>
-                      <div style={{display:"flex",gap:6,marginTop:8}} onClick={e=>e.stopPropagation()}>
+                      {/* Edit/Delete only visible to Admin */}
+                      {isAdmin&&<div style={{display:"flex",gap:6,marginTop:8}} onClick={e=>e.stopPropagation()}>
                         <button style={{flex:1,background:"transparent",border:"1px solid #333",borderRadius:6,padding:"6px 0",fontSize:12,color:"#777",cursor:"pointer"}} onClick={()=>openEdit(p)}>✏️ {isAr?"تعديل":"Edit"}</button>
                         <button style={{flex:1,background:"transparent",border:"1px solid #ff444433",borderRadius:6,padding:"6px 0",fontSize:12,color:"#ff5555",cursor:"pointer"}} onClick={()=>del(p.id)}>🗑 {isAr?"حذف":"Delete"}</button>
-                      </div>
+                      </div>}
                     </div>
                   </div>
                 );
@@ -265,7 +305,7 @@ function App(){
       </div>
 
       {/* Add/Edit Modal */}
-      {showForm&&(
+      {showForm&&isAdmin&&(
         <div className="modal-bg" onClick={()=>setShowForm(false)}>
           <div className="modal" onClick={e=>e.stopPropagation()}>
             <div style={{fontFamily:"Georgia,serif",fontSize:20,color:GOLD,marginBottom:20}}>{editId?(isAr?"تعديل العقار":"Edit Property"):(isAr?"إضافة عقار":"Add Property")}</div>
@@ -284,9 +324,9 @@ function App(){
               <div><label>Status</label><select value={form.status} onChange={set("status")}><option>New Launch</option><option>Off-Plan</option><option>Ready</option></select></div>
             </div>
             <label>WhatsApp Number</label><input value={form.whatsapp} onChange={set("whatsapp")} placeholder="35799..."/>
-            <label>📸 Photo URLs — separate multiple URLs with commas</label>
+            <label>📸 Photo URLs — separate with commas</label>
             <textarea rows={3} value={form.images} onChange={set("images")} placeholder="https://postimages.org/photo1.jpg, https://postimages.org/photo2.jpg"/>
-            <div style={{fontSize:11,color:"#555",marginTop:4}}>Upload photos to postimages.org → copy Direct Link → paste here separated by commas</div>
+            <div style={{fontSize:11,color:"#555",marginTop:4}}>Upload to postimages.org → copy Direct Link → paste here separated by commas</div>
             <label>Description (EN)</label><textarea rows={2} value={form.description} onChange={set("description")}/>
             <label>الوصف (AR)</label><textarea rows={2} value={form.description_ar} onChange={set("description_ar")} dir="rtl"/>
             <div style={{display:"flex",gap:10,marginTop:22,justifyContent:"flex-end"}}>
@@ -325,7 +365,7 @@ function App(){
             <div className="modal" style={{maxWidth:620}} onClick={e=>e.stopPropagation()}>
               <Gallery imgs={imgs} height={280}/>
               {imgs.length>1&&<div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:4,marginBottom:14}}>
-                {imgs.map((src,i)=><img key={i} src={src} className="thumb" onClick={()=>{}} alt=""/>)}
+                {imgs.map((src,i)=><img key={i} src={src} className="thumb" alt=""/>)}
               </div>}
               <div style={{fontFamily:"Georgia,serif",fontSize:22,color:GOLD,marginBottom:6}}>{isAr?viewP.title_ar:viewP.title}</div>
               <div style={{fontSize:13,color:"#888",marginBottom:14}}>📍 {isAr?viewP.location_ar:viewP.location}</div>
