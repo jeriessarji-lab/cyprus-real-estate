@@ -8,6 +8,7 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{background:#0A0A0A;color:#E8E0D0;font-family:Inter,sans-serif}
@@ -27,39 +28,43 @@
     .share-card{background:#111;border-radius:12px;padding:22px;border:2px solid #C9A84C44;margin-bottom:14px}
     .thumb{width:60px;height:60px;object-fit:cover;border-radius:6px;cursor:pointer;border:2px solid transparent;transition:border 0.2s;flex-shrink:0}
     .thumb.active{border-color:#C9A84C}
-    .arrow-btn{position:absolute;top:50%;transform:translateY(-50%);background:#00000088;border:none;color:#fff;font-size:20px;cursor:pointer;padding:8px 14px;border-radius:6px;z-index:2}
     ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:#C9A84C55;border-radius:3px}
+    .loading{display:flex;align-items:center;justify-content:center;height:300px;font-size:18px;color:#C9A84C}
+    .spinner{width:40px;height:40px;border:3px solid #2A2A2A;border-top-color:#C9A84C;border-radius:50%;animation:spin 0.8s linear infinite;margin-right:14px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .toast{position:fixed;bottom:24px;right:24px;background:#C9A84C;color:#000;padding:12px 20px;border-radius:8px;font-weight:500;z-index:999;animation:fadeIn 0.3s}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
   </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const {useState} = React;
-const GOLD="#C9A84C",GOLD2="#E8C97A",DARK="#0A0A0A",DARK2="#141414",DARK3="#1C1C1C",BORDER="#2A2A2A";
+const {useState, useEffect} = React;
+const GOLD="#C9A84C", GOLD2="#E8C97A", DARK="#0A0A0A", DARK2="#141414", DARK3="#1C1C1C", BORDER="#2A2A2A";
 const statusColor={"New Launch":GOLD,"Off-Plan":"#4A9EFF","Ready":"#4CAF50"};
 
-const initProps=[
-  {id:1,title:"Azure Sky Residences",titleAr:"مجمع أزور سكاي",location:"Limassol Marina, Cyprus",locationAr:"مرسى ليماسول، قبرص",price:"€485,000",type:"Apartment",bedrooms:3,bathrooms:2,area:142,developer:"Leptos Estates",commission:"7%",status:"New Launch",views:342,whatsapp:"35799000001",images:"https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=600&q=80,https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=600&q=80,https://images.unsplash.com/photo-1486325212027-8081e485255e?w=600&q=80",description:"Stunning sea-view apartments in Limassol Marina with world-class amenities.",descriptionAr:"شقق فاخرة بإطلالة بحرية في مرسى ليماسول مع مرافق عالمية المستوى.",featured:true},
-  {id:2,title:"Paphos Hills Villa Estate",titleAr:"فيلات تلال بافوس",location:"Paphos, Cyprus",locationAr:"بافوس، قبرص",price:"€920,000",type:"Villa",bedrooms:5,bathrooms:4,area:380,developer:"Aristo Developers",commission:"8%",status:"Off-Plan",views:218,whatsapp:"35799000001",images:"https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=600&q=80,https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=600&q=80,https://images.unsplash.com/photo-1502005097973-6a7082348e28?w=600&q=80",description:"Exclusive hilltop villas with panoramic views of the Mediterranean.",descriptionAr:"فيلات حصرية على قمة التل مع إطلالات بانورامية على البحر الأبيض المتوسط.",featured:false},
-  {id:3,title:"Nicosia Business Tower",titleAr:"برج نيقوسيا التجاري",location:"Nicosia City Center",locationAr:"وسط مدينة نيقوسيا",price:"€310,000",type:"Apartment",bedrooms:2,bathrooms:1,area:98,developer:"Imperio Properties",commission:"6%",status:"Ready",views:187,whatsapp:"35799000001",images:"https://images.unsplash.com/photo-1486325212027-8081e485255e?w=600&q=80,https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=600&q=80",description:"Modern city-center apartments ideal for investment and residency.",descriptionAr:"شقق عصرية في وسط المدينة مثالية للاستثمار والإقامة.",featured:false},
-];
+// Supabase client
+const supabase = window.supabase.createClient(
+  "https://vqcnrkdkkhskxgrrjzhw.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxY25ya2Rra2hza3hncnJqemh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NzkyNDEsImV4cCI6MjA5MjU1NTI0MX0.H5DAFXEGPqMx1WHSnB0rs40dVMjJAUZ_DGSmqjcXrxE"
+);
 
 function getImgs(p){return (p.images||"").split(",").map(s=>s.trim()).filter(Boolean)}
 
 function Gallery({imgs,height}){
   const [idx,setIdx]=useState(0);
-  if(!imgs||!imgs.length) return null;
+  if(!imgs||!imgs.length) return <div style={{height:height||220,background:"#111",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",color:"#444",marginBottom:14}}>No photos</div>;
   const prev=e=>{e.stopPropagation();setIdx(i=>(i-1+imgs.length)%imgs.length)};
   const next=e=>{e.stopPropagation();setIdx(i=>(i+1)%imgs.length)};
   return(
     <div style={{position:"relative",height:height||220,background:"#111",borderRadius:10,overflow:"hidden",marginBottom:14}}>
-      <img src={imgs[idx]} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} />
-      <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 50%,#000000bb 100%)"}} />
-      {imgs.length>1 && <>
-        <button className="arrow-btn" style={{left:8}} onClick={prev}>‹</button>
-        <button className="arrow-btn" style={{right:8}} onClick={next}>›</button>
+      <img src={imgs[idx]} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+      <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 50%,#000000bb 100%)"}}/>
+      {imgs.length>1&&<>
+        <button onClick={prev} style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",background:"#00000088",border:"none",color:"#fff",fontSize:20,cursor:"pointer",padding:"8px 14px",borderRadius:6,zIndex:2}}>‹</button>
+        <button onClick={next} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"#00000088",border:"none",color:"#fff",fontSize:20,cursor:"pointer",padding:"8px 14px",borderRadius:6,zIndex:2}}>›</button>
         <div style={{position:"absolute",bottom:10,left:"50%",transform:"translateX(-50%)",display:"flex",gap:5}}>
-          {imgs.map((_,i)=><div key={i} onClick={e=>{e.stopPropagation();setIdx(i)}} style={{width:i===idx?18:6,height:6,borderRadius:3,background:i===idx?GOLD:"#ffffff66",cursor:"pointer",transition:"width 0.2s"}} />)}
+          {imgs.map((_,i)=><div key={i} onClick={e=>{e.stopPropagation();setIdx(i)}} style={{width:i===idx?18:6,height:6,borderRadius:3,background:i===idx?GOLD:"#ffffff66",cursor:"pointer",transition:"width 0.2s"}}/>)}
         </div>
       </>}
       <div style={{position:"absolute",top:10,right:10,background:"#00000088",borderRadius:12,padding:"2px 8px",fontSize:11,color:"#ccc"}}>{idx+1}/{imgs.length}</div>
@@ -67,45 +72,74 @@ function Gallery({imgs,height}){
   );
 }
 
-function ThumbnailRow({imgs,activeIdx,onSelect}){
-  if(!imgs||imgs.length<=1) return null;
-  return(
-    <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:4,marginBottom:14}}>
-      {imgs.map((src,i)=>(
-        <img key={i} src={src} className={`thumb${i===activeIdx?" active":""}`} onClick={()=>onSelect(i)} alt="" />
-      ))}
-    </div>
-  );
-}
-
 function App(){
   const [lang,setLang]=useState("en");
   const [view,setView]=useState("listings");
-  const [props,setProps]=useState(initProps);
+  const [props,setProps]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [saving,setSaving]=useState(false);
+  const [toast,setToast]=useState(null);
   const [showForm,setShowForm]=useState(false);
   const [editId,setEditId]=useState(null);
   const [shareP,setShareP]=useState(null);
   const [viewP,setViewP]=useState(null);
-  const [viewIdx,setViewIdx]=useState(0);
   const isAr=lang==="ar";
-  const emptyForm={title:"",titleAr:"",location:"",locationAr:"",price:"",type:"Apartment",bedrooms:2,bathrooms:1,area:100,developer:"",commission:"7%",status:"New Launch",whatsapp:"35799000001",images:"",description:"",descriptionAr:"",featured:false};
+
+  const emptyForm={title:"",title_ar:"",location:"",location_ar:"",price:"",type:"Apartment",bedrooms:2,bathrooms:1,area:100,developer:"",commission:"7%",status:"New Launch",whatsapp:"35799000001",images:"",description:"",description_ar:"",featured:false};
   const [form,setForm]=useState(emptyForm);
   const set=k=>e=>setForm(f=>({...f,[k]:e.target.value}));
+
+  const showToast=msg=>{setToast(msg);setTimeout(()=>setToast(null),3000)};
+
+  // Load all properties from Supabase
+  const loadProps=async()=>{
+    setLoading(true);
+    const {data,error}=await supabase.from("properties").select("*").order("created_at",{ascending:false});
+    if(!error&&data) setProps(data);
+    setLoading(false);
+  };
+
+  useEffect(()=>{loadProps()},[]);
+
   const totalViews=props.reduce((s,p)=>s+p.views,0);
   const topP=[...props].sort((a,b)=>b.views-a.views)[0];
 
   const openAdd=()=>{setForm(emptyForm);setEditId(null);setShowForm(true)};
-  const openEdit=p=>{setForm({...p});setEditId(p.id);setShowForm(true)};
-  const save=()=>{
-    if(editId) setProps(ps=>ps.map(p=>p.id===editId?{...form,id:editId,views:p.views}:p));
-    else setProps(ps=>[...ps,{...form,id:Date.now(),views:0}]);
+  const openEdit=p=>{
+    setForm({title:p.title||"",title_ar:p.title_ar||"",location:p.location||"",location_ar:p.location_ar||"",price:p.price||"",type:p.type||"Apartment",bedrooms:p.bedrooms||2,bathrooms:p.bathrooms||1,area:p.area||100,developer:p.developer||"",commission:p.commission||"7%",status:p.status||"New Launch",whatsapp:p.whatsapp||"",images:p.images||"",description:p.description||"",description_ar:p.description_ar||"",featured:p.featured||false});
+    setEditId(p.id);
+    setShowForm(true);
+  };
+
+  const save=async()=>{
+    setSaving(true);
+    if(editId){
+      const {error}=await supabase.from("properties").update(form).eq("id",editId);
+      if(!error){showToast("✅ Property updated!");loadProps();}
+    } else {
+      const {error}=await supabase.from("properties").insert([{...form,views:0}]);
+      if(!error){showToast("✅ Property added!");loadProps();}
+    }
+    setSaving(false);
     setShowForm(false);
   };
-  const del=id=>setProps(ps=>ps.filter(p=>p.id!==id));
-  const trackView=id=>setProps(ps=>ps.map(p=>p.id===id?{...p,views:p.views+1}:p));
+
+  const del=async(id)=>{
+    await supabase.from("properties").delete().eq("id",id);
+    showToast("🗑 Property deleted");
+    loadProps();
+  };
+
+  const trackView=async(id)=>{
+    const p=props.find(x=>x.id===id);
+    if(p) await supabase.from("properties").update({views:(p.views||0)+1}).eq("id",id);
+    setProps(ps=>ps.map(x=>x.id===id?{...x,views:(x.views||0)+1}:x));
+  };
 
   return(
     <div style={{minHeight:"100vh",background:DARK,direction:isAr?"rtl":"ltr"}}>
+      {toast&&<div className="toast">{toast}</div>}
+
       {/* Header */}
       <div style={{background:DARK2,borderBottom:`1px solid ${BORDER}`,padding:"0 24px"}}>
         <div style={{maxWidth:1100,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between",height:64,flexWrap:"wrap",gap:8}}>
@@ -140,28 +174,34 @@ function App(){
       )}
 
       <div style={{maxWidth:1100,margin:"0 auto",padding:"24px 24px 60px"}}>
+
+        {/* Loading */}
+        {loading&&<div className="loading"><div className="spinner"/>{isAr?"جاري التحميل...":"Loading properties..."}</div>}
+
         {/* Dashboard */}
-        {view==="dashboard"&&(
+        {!loading&&view==="dashboard"&&(
           <div>
             <div style={{fontSize:22,color:GOLD,fontFamily:"Georgia,serif",marginBottom:24}}>{isAr?"لوحة التحكم":"Analytics Dashboard"}</div>
             <div className="grid2" style={{marginBottom:20}}>
               <div className="stat-card"><div style={{fontSize:12,color:"#888",marginBottom:8}}>{isAr?"إجمالي المشاهدات":"Total Views"}</div><div style={{fontSize:36,color:GOLD,fontWeight:500}}>{totalViews.toLocaleString()}</div></div>
               <div className="stat-card"><div style={{fontSize:12,color:"#888",marginBottom:8}}>{isAr?"إجمالي العقارات":"Active Listings"}</div><div style={{fontSize:36,color:GOLD,fontWeight:500}}>{props.length}</div></div>
             </div>
-            <div className="stat-card" style={{marginBottom:24}}>
+            {topP&&<div className="stat-card" style={{marginBottom:24}}>
               <div style={{fontSize:12,color:"#888",marginBottom:10}}>{isAr?"الأكثر مشاهدة":"Top Property"}</div>
-              <div style={{fontSize:16,color:"#E8E0D0",fontWeight:500}}>{isAr?topP?.titleAr:topP?.title}</div>
-              <div style={{fontSize:13,color:GOLD,marginTop:4}}>{topP?.views} {isAr?"مشاهدة":"views"}</div>
-            </div>
+              <div style={{fontSize:16,color:"#E8E0D0",fontWeight:500}}>{isAr?topP.title_ar:topP.title}</div>
+              <div style={{fontSize:13,color:GOLD,marginTop:4}}>{topP.views} {isAr?"مشاهدة":"views"}</div>
+            </div>}
             {props.map(p=>(
               <div key={p.id} style={{background:DARK3,border:`1px solid ${BORDER}`,borderRadius:10,padding:"14px 18px",marginBottom:10,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
-                <img src={getImgs(p)[0]} alt="" style={{width:52,height:52,borderRadius:8,objectFit:"cover"}} />
+                <img src={getImgs(p)[0]||"https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=80"} alt="" style={{width:52,height:52,borderRadius:8,objectFit:"cover"}}/>
                 <div style={{flex:1,minWidth:120}}>
-                  <div style={{fontSize:14,color:"#E8E0D0"}}>{isAr?p.titleAr:p.title}</div>
-                  <div style={{fontSize:12,color:"#666",marginTop:2}}>{getImgs(p).length} {isAr?"صور":"photos"} · {isAr?p.locationAr:p.location}</div>
+                  <div style={{fontSize:14,color:"#E8E0D0"}}>{isAr?p.title_ar:p.title}</div>
+                  <div style={{fontSize:12,color:"#666",marginTop:2}}>{getImgs(p).length} {isAr?"صور":"photos"} · {isAr?p.location_ar:p.location}</div>
                 </div>
                 <div style={{textAlign:"right"}}><div style={{fontSize:20,color:GOLD,fontWeight:500}}>{p.views}</div><div style={{fontSize:11,color:"#555"}}>{isAr?"مشاهدة":"views"}</div></div>
-                <div style={{width:100,height:8,background:"#222",borderRadius:4,overflow:"hidden"}}><div style={{width:`${Math.min(100,(p.views/Math.max(...props.map(x=>x.views)))*100)}%`,height:"100%",background:`linear-gradient(90deg,${GOLD},${GOLD2})`,borderRadius:4}}/></div>
+                <div style={{width:100,height:8,background:"#222",borderRadius:4,overflow:"hidden"}}>
+                  <div style={{width:`${props.length>0?Math.min(100,(p.views/Math.max(...props.map(x=>x.views||0),1))*100):0}%`,height:"100%",background:`linear-gradient(90deg,${GOLD},${GOLD2})`,borderRadius:4}}/>
+                </div>
                 <div style={{fontSize:13,color:"#4CAF50",fontWeight:500}}>{p.commission}</div>
                 <button className="btn-ghost" style={{fontSize:12}} onClick={()=>openEdit(p)}>✏️</button>
                 <button className="btn-ghost" style={{fontSize:12,color:"#ff5555",borderColor:"#ff555533"}} onClick={()=>del(p.id)}>🗑</button>
@@ -171,47 +211,55 @@ function App(){
         )}
 
         {/* Listings */}
-        {view==="listings"&&(
-          <div className="grid3">
-            {props.map(p=>{
-              const imgs=getImgs(p);
-              return(
-                <div key={p.id} className="card" onClick={()=>{trackView(p.id);setViewIdx(0);setViewP(p)}}>
-                  <div style={{position:"relative",height:200,overflow:"hidden"}}>
-                    <img src={imgs[0]||""} alt={p.title} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-                    <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 50%,#000000cc 100%)"}}/>
-                    <div style={{position:"absolute",top:12,left:12}}>
-                      <span className="badge" style={{background:`${statusColor[p.status]}22`,color:statusColor[p.status],border:`1px solid ${statusColor[p.status]}55`}}>{p.status}</span>
+        {!loading&&view==="listings"&&(
+          <div>
+            {props.length===0&&<div style={{textAlign:"center",padding:"60px 0",color:"#555"}}>
+              <div style={{fontSize:40,marginBottom:16}}>🏛</div>
+              <div style={{fontSize:18,color:GOLD,marginBottom:8}}>{isAr?"لا توجد عقارات بعد":"No properties yet"}</div>
+              <div style={{fontSize:14,marginBottom:24}}>{isAr?"أضف أول عقار الآن":"Add your first property now"}</div>
+              <button className="btn-gold" onClick={openAdd}>+ {isAr?"إضافة عقار":"Add Property"}</button>
+            </div>}
+            <div className="grid3">
+              {props.map(p=>{
+                const imgs=getImgs(p);
+                return(
+                  <div key={p.id} className="card" onClick={()=>{trackView(p.id);setViewP(p)}}>
+                    <div style={{position:"relative",height:200,overflow:"hidden"}}>
+                      <img src={imgs[0]||"https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=600"} alt={p.title} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                      <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 50%,#000000cc 100%)"}}/>
+                      <div style={{position:"absolute",top:12,left:12}}>
+                        <span className="badge" style={{background:`${statusColor[p.status]||GOLD}22`,color:statusColor[p.status]||GOLD,border:`1px solid ${statusColor[p.status]||GOLD}55`}}>{p.status}</span>
+                      </div>
+                      <div style={{position:"absolute",top:12,right:12,display:"flex",gap:6}}>
+                        {imgs.length>1&&<div style={{background:"#00000088",borderRadius:12,padding:"2px 8px",fontSize:11,color:"#ccc"}}>🖼 {imgs.length}</div>}
+                        <div style={{background:"#00000088",borderRadius:12,padding:"2px 8px",fontSize:11,color:"#ccc"}}>👁 {p.views||0}</div>
+                      </div>
+                      <div style={{position:"absolute",bottom:12,left:12,fontSize:20,color:"#fff",fontWeight:600,fontFamily:"Georgia,serif"}}>{p.price}</div>
                     </div>
-                    <div style={{position:"absolute",top:12,right:12,display:"flex",gap:6}}>
-                      {imgs.length>1&&<div style={{background:"#00000088",borderRadius:12,padding:"2px 8px",fontSize:11,color:"#ccc"}}>🖼 {imgs.length}</div>}
-                      <div style={{background:"#00000088",borderRadius:12,padding:"2px 8px",fontSize:11,color:"#ccc"}}>👁 {p.views}</div>
+                    <div style={{padding:16}}>
+                      <div style={{fontSize:15,color:"#E8E0D0",fontWeight:500,marginBottom:4}}>{isAr?p.title_ar:p.title}</div>
+                      <div style={{fontSize:12,color:"#888",marginBottom:12}}>📍 {isAr?p.location_ar:p.location}</div>
+                      <div style={{display:"flex",gap:14,fontSize:12,color:"#aaa",marginBottom:14}}>
+                        <span>🛏 {p.bedrooms}</span><span>🚿 {p.bathrooms}</span><span>📐 {p.area}m²</span>
+                      </div>
+                      <div style={{display:"flex",justifyContent:"space-between",borderTop:"1px solid #1E1E1E",paddingTop:12,marginBottom:12}}>
+                        <div><div style={{fontSize:11,color:"#555"}}>{isAr?"المطور":"Developer"}</div><div style={{fontSize:12,color:GOLD}}>{p.developer}</div></div>
+                        <div style={{textAlign:"right"}}><div style={{fontSize:11,color:"#555"}}>{isAr?"عمولتك":"Commission"}</div><div style={{fontSize:14,color:"#4CAF50",fontWeight:600}}>{p.commission}</div></div>
+                      </div>
+                      <div style={{display:"flex",gap:8}} onClick={e=>e.stopPropagation()}>
+                        <a href={`https://wa.me/${p.whatsapp}?text=${encodeURIComponent("I'm interested in "+p.title+" - "+p.price)}`} target="_blank" rel="noreferrer"
+                          style={{flex:1,background:"#25D36622",color:"#25D366",border:"1px solid #25D36644",borderRadius:7,padding:"8px 0",textAlign:"center",fontSize:13,textDecoration:"none",display:"block"}}>💬 WhatsApp</a>
+                        <button style={{flex:1,background:"#C9A84C15",color:GOLD,border:`1px solid ${GOLD}33`,borderRadius:7,padding:"8px 0",fontSize:13,cursor:"pointer"}} onClick={e=>{e.stopPropagation();setShareP(p)}}>📤 {isAr?"مشاركة":"Share"}</button>
+                      </div>
+                      <div style={{display:"flex",gap:6,marginTop:8}} onClick={e=>e.stopPropagation()}>
+                        <button style={{flex:1,background:"transparent",border:"1px solid #333",borderRadius:6,padding:"6px 0",fontSize:12,color:"#777",cursor:"pointer"}} onClick={()=>openEdit(p)}>✏️ {isAr?"تعديل":"Edit"}</button>
+                        <button style={{flex:1,background:"transparent",border:"1px solid #ff444433",borderRadius:6,padding:"6px 0",fontSize:12,color:"#ff5555",cursor:"pointer"}} onClick={()=>del(p.id)}>🗑 {isAr?"حذف":"Delete"}</button>
+                      </div>
                     </div>
-                    <div style={{position:"absolute",bottom:12,left:12,fontSize:20,color:"#fff",fontWeight:600,fontFamily:"Georgia,serif"}}>{p.price}</div>
                   </div>
-                  <div style={{padding:16}}>
-                    <div style={{fontSize:15,color:"#E8E0D0",fontWeight:500,marginBottom:4}}>{isAr?p.titleAr:p.title}</div>
-                    <div style={{fontSize:12,color:"#888",marginBottom:12}}>📍 {isAr?p.locationAr:p.location}</div>
-                    <div style={{display:"flex",gap:14,fontSize:12,color:"#aaa",marginBottom:14}}>
-                      <span>🛏 {p.bedrooms}</span><span>🚿 {p.bathrooms}</span><span>📐 {p.area}m²</span>
-                    </div>
-                    <div style={{display:"flex",justifyContent:"space-between",borderTop:"1px solid #1E1E1E",paddingTop:12,marginBottom:12}}>
-                      <div><div style={{fontSize:11,color:"#555"}}>{isAr?"المطور":"Developer"}</div><div style={{fontSize:12,color:GOLD}}>{p.developer}</div></div>
-                      <div style={{textAlign:"right"}}><div style={{fontSize:11,color:"#555"}}>{isAr?"عمولتك":"Commission"}</div><div style={{fontSize:14,color:"#4CAF50",fontWeight:600}}>{p.commission}</div></div>
-                    </div>
-                    <div style={{display:"flex",gap:8}} onClick={e=>e.stopPropagation()}>
-                      <a href={`https://wa.me/${p.whatsapp}?text=${encodeURIComponent("I'm interested in "+p.title+" - "+p.price)}`} target="_blank" rel="noreferrer"
-                        style={{flex:1,background:"#25D36622",color:"#25D366",border:"1px solid #25D36644",borderRadius:7,padding:"8px 0",textAlign:"center",fontSize:13,textDecoration:"none",display:"block"}}>💬 WhatsApp</a>
-                      <button style={{flex:1,background:"#C9A84C15",color:GOLD,border:`1px solid ${GOLD}33`,borderRadius:7,padding:"8px 0",fontSize:13,cursor:"pointer"}} onClick={e=>{e.stopPropagation();setShareP(p)}}>📤 {isAr?"مشاركة":"Share"}</button>
-                    </div>
-                    <div style={{display:"flex",gap:6,marginTop:8}} onClick={e=>e.stopPropagation()}>
-                      <button style={{flex:1,background:"transparent",border:"1px solid #333",borderRadius:6,padding:"6px 0",fontSize:12,color:"#777",cursor:"pointer"}} onClick={()=>openEdit(p)}>✏️ {isAr?"تعديل":"Edit"}</button>
-                      <button style={{flex:1,background:"transparent",border:"1px solid #ff444433",borderRadius:6,padding:"6px 0",fontSize:12,color:"#ff5555",cursor:"pointer"}} onClick={()=>del(p.id)}>🗑 {isAr?"حذف":"Delete"}</button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
@@ -223,9 +271,9 @@ function App(){
             <div style={{fontFamily:"Georgia,serif",fontSize:20,color:GOLD,marginBottom:20}}>{editId?(isAr?"تعديل العقار":"Edit Property"):(isAr?"إضافة عقار":"Add Property")}</div>
             <div className="grid2">
               <div><label>Title (EN)</label><input value={form.title} onChange={set("title")}/></div>
-              <div><label>العنوان (AR)</label><input value={form.titleAr} onChange={set("titleAr")} dir="rtl"/></div>
+              <div><label>العنوان (AR)</label><input value={form.title_ar} onChange={set("title_ar")} dir="rtl"/></div>
               <div><label>Location (EN)</label><input value={form.location} onChange={set("location")}/></div>
-              <div><label>الموقع (AR)</label><input value={form.locationAr} onChange={set("locationAr")} dir="rtl"/></div>
+              <div><label>الموقع (AR)</label><input value={form.location_ar} onChange={set("location_ar")} dir="rtl"/></div>
               <div><label>Price</label><input value={form.price} onChange={set("price")} placeholder="€000,000"/></div>
               <div><label>Type</label><select value={form.type} onChange={set("type")}><option>Apartment</option><option>Villa</option><option>Penthouse</option><option>Commercial</option></select></div>
               <div><label>Bedrooms</label><input type="number" value={form.bedrooms} onChange={set("bedrooms")}/></div>
@@ -235,15 +283,15 @@ function App(){
               <div><label>Commission</label><select value={form.commission} onChange={set("commission")}>{["5%","6%","7%","8%","9%","10%"].map(c=><option key={c}>{c}</option>)}</select></div>
               <div><label>Status</label><select value={form.status} onChange={set("status")}><option>New Launch</option><option>Off-Plan</option><option>Ready</option></select></div>
             </div>
-            <label>WhatsApp Number</label><input value={form.whatsapp} onChange={set("whatsapp")}/>
-            <label>📸 Photo URLs — paste multiple URLs separated by commas</label>
-            <textarea rows={3} value={form.images} onChange={set("images")} placeholder="https://imgur.com/photo1.jpg, https://imgur.com/photo2.jpg, https://imgur.com/photo3.jpg"/>
-            <div style={{fontSize:11,color:"#555",marginTop:4}}>Tip: Upload photos to imgur.com, then paste the URLs here separated by commas. You can add as many as you want!</div>
+            <label>WhatsApp Number</label><input value={form.whatsapp} onChange={set("whatsapp")} placeholder="35799..."/>
+            <label>📸 Photo URLs — separate multiple URLs with commas</label>
+            <textarea rows={3} value={form.images} onChange={set("images")} placeholder="https://postimages.org/photo1.jpg, https://postimages.org/photo2.jpg"/>
+            <div style={{fontSize:11,color:"#555",marginTop:4}}>Upload photos to postimages.org → copy Direct Link → paste here separated by commas</div>
             <label>Description (EN)</label><textarea rows={2} value={form.description} onChange={set("description")}/>
-            <label>الوصف (AR)</label><textarea rows={2} value={form.descriptionAr} onChange={set("descriptionAr")} dir="rtl"/>
+            <label>الوصف (AR)</label><textarea rows={2} value={form.description_ar} onChange={set("description_ar")} dir="rtl"/>
             <div style={{display:"flex",gap:10,marginTop:22,justifyContent:"flex-end"}}>
               <button className="btn-ghost" onClick={()=>setShowForm(false)}>{isAr?"إلغاء":"Cancel"}</button>
-              <button className="btn-gold" onClick={save}>{isAr?"حفظ":"Save Property"}</button>
+              <button className="btn-gold" onClick={save} disabled={saving}>{saving?"Saving...":isAr?"حفظ":"Save Property"}</button>
             </div>
           </div>
         </div>
@@ -256,38 +304,39 @@ function App(){
             <div style={{fontFamily:"Georgia,serif",fontSize:18,color:GOLD,marginBottom:18}}>📤 {isAr?"مشاركة على السوشيال ميديا":"Share to Social Media"}</div>
             <div className="share-card">
               <div style={{fontSize:12,color:"#888",marginBottom:8}}>📘 Facebook / WhatsApp</div>
-              <pre style={{fontSize:13,color:"#E8E0D0",whiteSpace:"pre-wrap",fontFamily:"inherit",lineHeight:1.7}}>{`🏛 ${shareP.title}\n📍 ${shareP.location}\n💰 ${shareP.price}\n🛏 ${shareP.bedrooms} bed | 📐 ${shareP.area}m²\n✅ ${shareP.status}\n🖼 ${getImgs(shareP).length} photos available\n\nContact: wa.me/${shareP.whatsapp}`}</pre>
-              <button className="btn-gold" style={{marginTop:12,width:"100%"}} onClick={()=>navigator.clipboard.writeText(`🏛 ${shareP.title}\n📍 ${shareP.location}\n💰 ${shareP.price}\n🛏 ${shareP.bedrooms} bed | 📐 ${shareP.area}m²\n✅ ${shareP.status}\n\nContact: wa.me/${shareP.whatsapp}`)}>📋 {isAr?"نسخ لفيسبوك":"Copy for Facebook"}</button>
+              <pre style={{fontSize:13,color:"#E8E0D0",whiteSpace:"pre-wrap",fontFamily:"inherit",lineHeight:1.7}}>{`🏛 ${shareP.title}\n📍 ${shareP.location}\n💰 ${shareP.price}\n🛏 ${shareP.bedrooms} bed | 📐 ${shareP.area}m²\n✅ ${shareP.status}\n\nContact: wa.me/${shareP.whatsapp}`}</pre>
+              <button className="btn-gold" style={{marginTop:12,width:"100%"}} onClick={()=>{navigator.clipboard.writeText(`🏛 ${shareP.title}\n📍 ${shareP.location}\n💰 ${shareP.price}\n🛏 ${shareP.bedrooms} bed | 📐 ${shareP.area}m²\n✅ ${shareP.status}\n\nContact: wa.me/${shareP.whatsapp}`);showToast("📋 Copied!")}}>📋 {isAr?"نسخ لفيسبوك":"Copy for Facebook"}</button>
             </div>
             <div className="share-card">
               <div style={{fontSize:12,color:"#888",marginBottom:8}}>📸 Instagram</div>
-              <pre style={{fontSize:13,color:"#E8E0D0",whiteSpace:"pre-wrap",fontFamily:"inherit",lineHeight:1.7}}>{`✨ NEW LISTING ✨\n${shareP.title}\n${shareP.location}\nFrom ${shareP.price}\n🔥 ${shareP.status}\nDM or WhatsApp 👇`}</pre>
-              <button className="btn-gold" style={{marginTop:12,width:"100%"}} onClick={()=>navigator.clipboard.writeText(`✨ NEW LISTING ✨\n${shareP.title}\n${shareP.location}\nFrom ${shareP.price}\n🔥 ${shareP.status}\nDM or WhatsApp 👇`)}>📋 {isAr?"نسخ لإنستغرام":"Copy for Instagram"}</button>
+              <pre style={{fontSize:13,color:"#E8E0D0",whiteSpace:"pre-wrap",fontFamily:"inherit",lineHeight:1.7}}>{`✨ NEW LISTING ✨\n${shareP.title}\n${shareP.location}\nFrom ${shareP.price}\n🔥 ${shareP.status}\nDM or WhatsApp 👇\n#CyprusRealEstate #LuxuryLiving #قبرص`}</pre>
+              <button className="btn-gold" style={{marginTop:12,width:"100%"}} onClick={()=>{navigator.clipboard.writeText(`✨ NEW LISTING ✨\n${shareP.title}\n${shareP.location}\nFrom ${shareP.price}\n🔥 ${shareP.status}\nDM or WhatsApp 👇\n#CyprusRealEstate #LuxuryLiving #قبرص`);showToast("📋 Copied!")}}>📋 {isAr?"نسخ لإنستغرام":"Copy for Instagram"}</button>
             </div>
             <button className="btn-ghost" style={{width:"100%"}} onClick={()=>setShareP(null)}>{isAr?"إغلاق":"Close"}</button>
           </div>
         </div>
       )}
 
-      {/* View Modal with Gallery */}
+      {/* View Modal */}
       {viewP&&(()=>{
         const imgs=getImgs(viewP);
         return(
           <div className="modal-bg" onClick={()=>setViewP(null)}>
             <div className="modal" style={{maxWidth:620}} onClick={e=>e.stopPropagation()}>
               <Gallery imgs={imgs} height={280}/>
-              <ThumbnailRow imgs={imgs} activeIdx={viewIdx} onSelect={setViewIdx}/>
-              <div style={{fontFamily:"Georgia,serif",fontSize:22,color:GOLD,marginBottom:6}}>{isAr?viewP.titleAr:viewP.title}</div>
-              <div style={{fontSize:13,color:"#888",marginBottom:14}}>📍 {isAr?viewP.locationAr:viewP.location}</div>
+              {imgs.length>1&&<div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:4,marginBottom:14}}>
+                {imgs.map((src,i)=><img key={i} src={src} className="thumb" onClick={()=>{}} alt=""/>)}
+              </div>}
+              <div style={{fontFamily:"Georgia,serif",fontSize:22,color:GOLD,marginBottom:6}}>{isAr?viewP.title_ar:viewP.title}</div>
+              <div style={{fontSize:13,color:"#888",marginBottom:14}}>📍 {isAr?viewP.location_ar:viewP.location}</div>
               <div style={{fontSize:26,color:"#E8E0D0",fontWeight:600,marginBottom:16}}>{viewP.price}</div>
               <div style={{display:"flex",gap:16,fontSize:13,color:"#aaa",marginBottom:16,flexWrap:"wrap"}}>
                 <span>🛏 {viewP.bedrooms} {isAr?"غرف":"Bedrooms"}</span>
                 <span>🚿 {viewP.bathrooms} {isAr?"حمامات":"Bathrooms"}</span>
                 <span>📐 {viewP.area} m²</span>
                 <span>🏗 {viewP.type}</span>
-                <span>🖼 {imgs.length} {isAr?"صور":"photos"}</span>
               </div>
-              <div style={{fontSize:14,color:"#ccc",lineHeight:1.7,marginBottom:18}}>{isAr?viewP.descriptionAr:viewP.description}</div>
+              <div style={{fontSize:14,color:"#ccc",lineHeight:1.7,marginBottom:18}}>{isAr?viewP.description_ar:viewP.description}</div>
               <div style={{display:"flex",gap:10,marginBottom:18,flexWrap:"wrap"}}>
                 <div style={{background:"#1A1A1A",borderRadius:8,padding:"10px 16px"}}><div style={{fontSize:11,color:"#666"}}>{isAr?"المطور":"Developer"}</div><div style={{fontSize:14,color:GOLD}}>{viewP.developer}</div></div>
                 <div style={{background:"#1A1A1A",borderRadius:8,padding:"10px 16px"}}><div style={{fontSize:11,color:"#666"}}>{isAr?"عمولتك":"Commission"}</div><div style={{fontSize:14,color:"#4CAF50",fontWeight:600}}>{viewP.commission}</div></div>
