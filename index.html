@@ -205,7 +205,7 @@ function App(){
       {/* Hero */}
       {view==="listings"&&(
         <div style={{background:`linear-gradient(180deg,${DARK2},${DARK})`,padding:"48px 24px 32px",textAlign:"center"}}>
-          <div style={{fontFamily:"Georgia,serif",fontSize:32,color:GOLD,marginBottom:10}}>{isAr?"اكتشف العقارات السرية في قبرص":"Discover Luxury Properties in Cyprus"}</div>
+          <div style={{fontFamily:"Georgia,serif",fontSize:32,color:GOLD,marginBottom:10}}>{isAr?"اكتشف العقارات السرية في قبرص":"Discover SECRET HIDDEN Properties in Cyprus"}</div>
           <div style={{color:"#888",fontSize:15}}>{isAr?"عقارات حصرية مباشرة من كبار المطورين":"Exclusive developments from top Cyprus developers"}</div>
           <div style={{display:"flex",justifyContent:"center",gap:32,marginTop:24}}>
             {[["🏙",isAr?"ليماسول":"Limassol"],["🌊",isAr?"بافوس":"Paphos"],["🏛",isAr?"نيقوسيا":"Nicosia"],["🌿",isAr?"لارنكا":"Larnaca"]].map(([icon,city])=>(
@@ -290,7 +290,6 @@ function App(){
                           style={{flex:1,background:"#25D36622",color:"#25D366",border:"1px solid #25D36644",borderRadius:7,padding:"8px 0",textAlign:"center",fontSize:13,textDecoration:"none",display:"block"}}>💬 WhatsApp</a>
                         <button style={{flex:1,background:"#C9A84C15",color:GOLD,border:`1px solid ${GOLD}33`,borderRadius:7,padding:"8px 0",fontSize:13,cursor:"pointer"}} onClick={e=>{e.stopPropagation();setShareP(p)}}>📤 {isAr?"مشاركة":"Share"}</button>
                       </div>
-                      {/* Edit/Delete only visible to Admin */}
                       {isAdmin&&<div style={{display:"flex",gap:6,marginTop:8}} onClick={e=>e.stopPropagation()}>
                         <button style={{flex:1,background:"transparent",border:"1px solid #333",borderRadius:6,padding:"6px 0",fontSize:12,color:"#777",cursor:"pointer"}} onClick={()=>openEdit(p)}>✏️ {isAr?"تعديل":"Edit"}</button>
                         <button style={{flex:1,background:"transparent",border:"1px solid #ff444433",borderRadius:6,padding:"6px 0",fontSize:12,color:"#ff5555",cursor:"pointer"}} onClick={()=>del(p.id)}>🗑 {isAr?"حذف":"Delete"}</button>
